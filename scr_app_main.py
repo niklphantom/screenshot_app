@@ -1,7 +1,7 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtWidgets import *
 import sys
-from classify_automated_not_ide import *
+#from classify_automated_not_ide import *
 
 class MyWindow(QMainWindow):
     automatic_cond = False  # automated mode if false
@@ -30,11 +30,34 @@ class MyWindow(QMainWindow):
     def initUI(self):
 
         self.width = 224
+        # self.centralwidget = QtWidgets.QWidget()
+        # self.centralwidget.setObjectName("centralwidget")
+        # self.photo = QtWidgets.QLabel(self.centralwidget)
+        # self.photo.setGeometry(QtCore.QRect(1500, 1200, 841, 511))
+        # self.photo.setText("")
+        # self.photo.setPixmap(QtGui.QPixmap("filenam.png"))
+        # self.photo.setScaledContents(True)
+        # self.photo.setObjectName("photo")
+
+        # pixmap = QtGui.QPixmap("filenam.png")
+        # sceneItem = self.addItem(pixmap)
+        # sceneItem.setPos(1500,1500)
+
+        self.label2 = QLabel('PyQt5', self)
+        self.label2.setGeometry(QtCore.QRect(1410, 530, 512, 288))
+        #label2.move(20,0)
+        #label2.setGeometry(QtCore.QRect(0, 0, 841, 511))
+        pixmap = QtGui.QPixmap("filenam.png")
+        pixmap = pixmap.scaled(512,288)
+        self.label2.setPixmap(pixmap)
+        self.label3 = QLabel('PyQt5', self)
+        self.label3.setGeometry(QtCore.QRect(1570, 530, 30, 50))
+
 
         self.imageView = QtWidgets.QGraphicsView(self)
         self.scene = QtWidgets.QGraphicsScene(self)
         self.scene.setSceneRect(0, 0, 1400, 800)
-        self.imageView.setGeometry(QtCore.QRect(10, 60, 1410, 810))
+        self.imageView.setGeometry(QtCore.QRect(0, 60, 1410, 810))
         self.imageView.setScene(self.scene)
         self.imageView.setObjectName("imageView")
 
@@ -210,6 +233,7 @@ class MyWindow(QMainWindow):
         newSceneHeight = mimeData.imageData().height()
         self.scene.setSceneRect(0,0, newSceneWidth, newSceneHeight)
         self.scene.addPixmap(QtGui.QPixmap(mimeData.imageData()))
+        #self.scene.setScaledContents(False)
         p = QtGui.QPixmap(mimeData.imageData())
         p.save("filenam.png","PNG")
 
