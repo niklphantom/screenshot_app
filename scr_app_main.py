@@ -1,58 +1,45 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtWidgets import *
 import sys
-#from classify_automated_not_ide import *
+import os
+import json
+from PyQt5.QtWidgets import QMessageBox
+
+
 
 class MyWindow(QMainWindow):
-    automatic_cond = False  # automated mode if false
 
-    source_dir = "/home/lab5017/Datacastle/develop/datasets_ft/classify_autmated_test/src/"
     save_dir = "/home/lab5017/Datacastle/develop/datasets_ft/classify_autmated_test/"
-    weights_path = "/home/lab5017/Datacastle/develop/datasets_ft/eleron/SN_eleron_4_EPS_acc091.h5"
-    height = 224
-    width = 224
-    channels = 3
-    number_of_classes = 4
-    classes_file = ""
-    classes = ["background", "car", "groups", "people"]
-    pred = None
-    img_name = None
-    imgs_names = None
-    counter = 0
-
+    title = "mlp"
+    episode = ""
+    index = 0
+    screenshot_list = []
+    index_list = []
+    new_session = True
 
     def __init__(self):
         super(MyWindow, self).__init__()
         self.setGeometry(50, 50, 1650, 1200)
-        self.setWindowTitle("Autorazmetka")
+        self.setWindowTitle("ScreenApp")
         self.initUI()
 
     def initUI(self):
 
-        self.width = 224
-        # self.centralwidget = QtWidgets.QWidget()
-        # self.centralwidget.setObjectName("centralwidget")
-        # self.photo = QtWidgets.QLabel(self.centralwidget)
-        # self.photo.setGeometry(QtCore.QRect(1500, 1200, 841, 511))
-        # self.photo.setText("")
-        # self.photo.setPixmap(QtGui.QPixmap("filenam.png"))
-        # self.photo.setScaledContents(True)
-        # self.photo.setObjectName("photo")
-
-        # pixmap = QtGui.QPixmap("filenam.png")
-        # sceneItem = self.addItem(pixmap)
-        # sceneItem.setPos(1500,1500)
-
-        self.label2 = QLabel('PyQt5', self)
-        self.label2.setGeometry(QtCore.QRect(1410, 530, 512, 288))
-        #label2.move(20,0)
-        #label2.setGeometry(QtCore.QRect(0, 0, 841, 511))
-        pixmap = QtGui.QPixmap("filenam.png")
+        self.label1 = QLabel('PyQt5', self)
+        self.label1.setGeometry(QtCore.QRect(1410, 380, 512, 288))
+        pixmap = QtGui.QPixmap("")
         pixmap = pixmap.scaled(512,288)
-        self.label2.setPixmap(pixmap)
-        self.label3 = QLabel('PyQt5', self)
-        self.label3.setGeometry(QtCore.QRect(1570, 530, 30, 50))
+        self.label1.setPixmap(pixmap)
+        self.label2 = QLabel('Prev', self)
+        self.label2.setGeometry(QtCore.QRect(1480, 340, 30, 50))
 
+        self.label3 = QLabel('PyQt5', self)
+        self.label3.setGeometry(QtCore.QRect(1410, 695, 512, 288))
+        pixmap = QtGui.QPixmap("")
+        pixmap = pixmap.scaled(512,288)
+        self.label3.setPixmap(pixmap)
+        self.label4 = QLabel('Prev prev', self)
+        self.label4.setGeometry(QtCore.QRect(1480, 655, 60, 50))
 
         self.imageView = QtWidgets.QGraphicsView(self)
         self.scene = QtWidgets.QGraphicsScene(self)
@@ -65,28 +52,17 @@ class MyWindow(QMainWindow):
         self.predictLab.setGeometry(100, 10, 200, 50)
         self.predictLab.setObjectName("predictLab")
 
-        self.nextImageBut = QtWidgets.QPushButton(self)
-        self.nextImageBut.setGeometry(QtCore.QRect(1450, 500, 93, 28))
-        self.nextImageBut.setObjectName("nextImageBut")
-
-        self.startAutoClassBut = QtWidgets.QPushButton(self)
-        self.startAutoClassBut.setGeometry(QtCore.QRect(1450, 450, 94, 28))
-        self.startAutoClassBut.setObjectName("startAutoClassBut")
+        self.deleteImageBut = QtWidgets.QPushButton(self)
+        self.deleteImageBut.setGeometry(QtCore.QRect(1450, 300, 93, 28))
+        self.deleteImageBut.setObjectName("deleteImageBut")
 
         self.verticalLayoutWidget = QtWidgets.QWidget(self)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(1440, 20, 160, 406))
+        self.verticalLayoutWidget.setGeometry(QtCore.QRect(1440, 20, 160, 260))
         self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
 
         self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout.setObjectName("verticalLayout")
-
-        self.sourceDirBut = QtWidgets.QPushButton(self.verticalLayoutWidget)
-        self.sourceDirBut.setObjectName("sourceDirBut")
-        self.verticalLayout.addWidget(self.sourceDirBut)
-        self.sourceDirLab = QtWidgets.QLabel(self.verticalLayoutWidget)
-        self.sourceDirLab.setObjectName("sourceDirLab")
-        self.verticalLayout.addWidget(self.sourceDirLab)
 
         self.saveDirBut = QtWidgets.QPushButton(self.verticalLayoutWidget)
         self.saveDirBut.setObjectName("saveDirBut")
@@ -95,147 +71,156 @@ class MyWindow(QMainWindow):
         self.saveDirLab.setObjectName("saveDirLab")
         self.verticalLayout.addWidget(self.saveDirLab)
 
-        self.weightsBut = QtWidgets.QPushButton(self.verticalLayoutWidget)
-        self.weightsBut.setObjectName("weightsBut")
-        self.verticalLayout.addWidget(self.weightsBut)
-        self.weightsLab = QtWidgets.QLabel(self.verticalLayoutWidget)
-        self.weightsLab.setObjectName("weightsLab")
-        self.verticalLayout.addWidget(self.weightsLab)
+        self.titleLab = QtWidgets.QLabel(self.verticalLayoutWidget)
+        self.titleLab.setObjectName("titleLab")
+        self.verticalLayout.addWidget(self.titleLab)
+        self.titleEdit = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.titleEdit.setObjectName("titleEdit")
+        self.verticalLayout.addWidget(self.titleEdit)
+        self.titleEdit.setText(str(self.title))
 
-        self.heightLab = QtWidgets.QLabel(self.verticalLayoutWidget)
-        self.heightLab.setObjectName("heightLab")
-        self.verticalLayout.addWidget(self.heightLab)
-        self.heidhtEdit = QtWidgets.QLineEdit(self.verticalLayoutWidget)
-        self.heidhtEdit.setObjectName("heidhtEdit")
-        self.verticalLayout.addWidget(self.heidhtEdit)
+        self.episodeLab = QtWidgets.QLabel(self.verticalLayoutWidget)
+        self.episodeLab.setObjectName("episodeLab")
+        self.verticalLayout.addWidget(self.episodeLab)
+        self.episodeEdit = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.episodeEdit.setObjectName("episodeEdit")
+        self.verticalLayout.addWidget(self.episodeEdit)
+        self.episodeEdit.setText(str(self.episode))
 
-        self.widthLab = QtWidgets.QLabel(self.verticalLayoutWidget)
-        self.widthLab.setObjectName("widthLab")
-        self.verticalLayout.addWidget(self.widthLab)
-        self.widthEdit = QtWidgets.QLineEdit(self.verticalLayoutWidget)
-        self.widthEdit.setObjectName("widthEdit")
-        self.verticalLayout.addWidget(self.widthEdit)
-        self.widthEdit.setText(str(self.width))
-
-        self.classesBut = QtWidgets.QPushButton(self.verticalLayoutWidget)
-        self.classesBut.setObjectName("classesBut")
-        self.verticalLayout.addWidget(self.classesBut)
-        self.classesLab = QtWidgets.QLabel(self.verticalLayoutWidget)
-        self.classesLab.setObjectName("classesLab")
-
-        self.verticalLayout.addWidget(self.classesLab)
         self.automatic = QtWidgets.QCheckBox(self.verticalLayoutWidget)
-        self.automatic.setObjectName("automatic")
+        self.automatic.setObjectName("check it if you are stupid C:")
         self.verticalLayout.addWidget(self.automatic)
 
         self.retranslateUi()
         QtCore.QMetaObject.connectSlotsByName(self)
 
+        if os.path.isfile("last_session_data.json"):
+            with open("last_session_data.json", "r") as read_file:
+                data = json.load(read_file)
+            self.save_dir = data["save_dir"]
+            self.saveDirLab.setText(self.save_dir)
+            self.title = data["title"]
+            self.titleEdit.setText(str(self.title))
+            self.episode = data["episode"]
+            self.episodeEdit.setText(str(self.episode))
+
         # actions, changes and clicks
-        self.sourceDirBut.clicked.connect(self.changeSourceDir)
         self.saveDirBut.clicked.connect(self.changeSaveDir)
-        self.weightsBut.clicked.connect(self.changeWeightsFile)
-        self.classesBut.clicked.connect(self.changeClassFile)
         self.automatic.stateChanged.connect(self.changeMode)
-        self.startAutoClassBut.clicked.connect(self.startClassify)
-        self.nextImageBut.clicked.connect(self.nextImg)
+        self.deleteImageBut.clicked.connect(self.deleteImg)
 
     def retranslateUi(self):
         _translate = QtCore.QCoreApplication.translate
         self.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.nextImageBut.setText(_translate("MainWindow", "Next"))
-        self.startAutoClassBut.setText(_translate("MainWindow", "Start autoclass"))
-        self.sourceDirBut.setText(_translate("MainWindow", "Source directory"))
-        self.sourceDirLab.setText(_translate("MainWindow", "source"))
+        self.deleteImageBut.setText(_translate("MainWindow", "delete"))
         self.saveDirBut.setText(_translate("MainWindow", "Save directory"))
         self.saveDirLab.setText(_translate("MainWindow", "save"))
-        self.weightsBut.setText(_translate("MainWindow", "Weights path"))
-        self.weightsLab.setText(_translate("MainWindow", "weights"))
-        self.heightLab.setText(_translate("MainWindow", "height"))
-        self.widthLab.setText(_translate("MainWindow", "width"))
-        self.classesBut.setText(_translate("MainWindow", "Classes"))
-        self.classesLab.setText(_translate("MainWindow", "classes"))
-        self.automatic.setText(_translate("MainWindow", "automatic"))
+        self.titleLab.setText(_translate("MainWindow", "title"))
+        self.episodeLab.setText(_translate("MainWindow", "episode"))
+        self.automatic.setText(_translate("MainWindow", "check it if you are stupid C:"))
 
-    def nextImg(self):
+    def deleteImg(self):
+        self.screenshot_list.pop()
         self.scene.clear()
-        self.scene.addPixmap(QtGui.QPixmap(self.img_name))
-        self.counter += 1
-        newfont = QtGui.QFont("Times", 14, QtGui.QFont.Bold)
-        self.predictLab.setText(self.pred)
-        self.predictLab.setFont(newfont)
-        if self.counter < len(self.imgs_names):
-            self._predict()
+        # pixmap = QtGui.QPixmap(os.path.join(self.save_dir, self.screenshot_list[-1]))
+        # newSceneWidth = pixmap.width()
+        # newSceneHeight = pixmap.height()
+        # self.scene.setSceneRect(0,0, newSceneWidth, newSceneHeight)
+        # self.scene.addPixmap(QtGui.QPixmap(pixmap))
+        # # and also refresh prevs
+        # self.refresh_prev_screenshots()
 
     def changeMode(self, state):
-        self.automatic_cond = state == QtCore.Qt.Checked
+        pass
 
-    def changeSourceDir(self):
-        self.source_dir = QtWidgets.QFileDialog.getExistingDirectory()
-        self.sourceDirLab.setText(self.source_dir)
+    def start_new_session(self):
+        self.index = 0
+        self.screenshot_list = []
+        self.index_list = []
+        file_list = os.listdir(self.save_dir)
+        file_list.sort()
+        for file_name in file_list:
+            print(file_name)
+            ext = file_name[file_name.rfind(".") + 1:]
+            if ext == "jpg" or ext == "png" or ext == "jpeg":
+                relevance = file_name.rfind(self.title + "_" + self.episode + "_")
+                # find only relevant to current session images, and determine max last saved index
+                if relevance != -1:
+                    prefix_len = len(self.title + "_" + self.episode + "_")
+                    self.screenshot_list.append(file_name)
+                    current_index = int(file_name[relevance + prefix_len: file_name.rfind(".")])
+                    self.index_list.append(current_index)
+        self.screenshot_list.sort(key=lambda elem: int(elem[len(self.title + "_" + self.episode + "_"): elem.rfind(".")]))
+        if self.index_list:
+            self.index = max(self.index_list) + 1
+        # save file about current session to load delete time
+        session_data = {"save_dir": self.save_dir, "title": self.title, "episode": self.episode}
+        with open("last_session_data.json", "w") as write_file:
+            json.dump(session_data, write_file)
+
+    def refresh_prev_screenshots(self):
+        if len(self.screenshot_list) > 1:
+            pixmap = QtGui.QPixmap(os.path.join(self.save_dir, self.screenshot_list[-2]))
+            print(self.screenshot_list[-2])
+            pixmap = pixmap.scaled(512,288)
+            self.label1.setPixmap(pixmap)
+        if len(self.screenshot_list) > 2:
+            pixmap = QtGui.QPixmap(os.path.join(self.save_dir, self.screenshot_list[-3]))
+            pixmap = pixmap.scaled(512,288)
+            self.label3.setPixmap(pixmap)
 
     def changeSaveDir(self):
         self.save_dir = QtWidgets.QFileDialog.getExistingDirectory()
         self.saveDirLab.setText(self.save_dir)
 
-    def changeWeightsFile(self):
-        self.weights_path = QtWidgets.QFileDialog.getOpenFileName()[0]
-        self.weightsLab.setText(self.weights_path)
-
-    def changeClassFile(self):
-        self.classes_file = QtWidgets.QFileDialog.getOpenFileName()[0]
-        self.classesLab.setText(self.classes_file)
-
-    def startClassify(self):
-        self.width = self.widthEdit.text()
-        self.height = self.heidhtEdit.text()
-
-        with open(self.classes_file, 'r') as f:
-            self.classes = f.readlines()
-            self.number_of_classes = len(self.classes)
-            for i in range(self.number_of_classes):
-                self.classes[i] = self.classes[i].replace('\n', '').replace(' ', '')
-        print(self.classes)
-
-        if self.automatic_cond:
-            start_classify(source_dir=self.source_dir,
-                           save_dir=self.save_dir,
-                           weights_path=self.weights_path,
-                           classes=self.classes,
-                           num_classes=self.number_of_classes,
-                           height=self.height,
-                           width=self.width)
-        else:
-            self.imgs_names = os.listdir(self.source_dir)
-            for i in range(len(self.imgs_names)):
-                self.imgs_names[i] = os.path.join(self.source_dir, self.imgs_names[i])
-            self._predict()
-
-    def _predict(self):
-        img_name = self.imgs_names[self.counter]
-        self.img_name, self.pred = predict(img_name=img_name,
-                save_dir=self.save_dir,
-                weights_path=self.weights_path,
-                classes=self.classes,
-                num_classes=self.number_of_classes,
-                height=self.height,
-                width=self.width)
-
     def keyPressEvent(self, e: QtGui.QKeyEvent):
         if e.key() == QtCore.Qt.Key_V:
             self.copyImg()
+        if e.key() == QtCore.Qt.Key_Delete:
+            self.deleteImg()
 
     def copyImg(self):
+        temp_episode = self.episodeEdit.text()
+        temp_title = self.titleEdit.text()
+        if self.title != temp_title or self.episode != temp_episode:
+            self.title = temp_title
+            self.episode = temp_episode
+            self.new_session = True
+        if self.title == "" and self.episode == "":
+            #print("uuuu nelza tak")
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("Not so fast")
+            msg.setInformativeText('Please fill some info in title or episode fields')
+            msg.setWindowTitle("Error")
+            msg.exec_()
+            return
         self.scene.clear()
         clip = QApplication.clipboard()
         mimeData = clip.mimeData()
-        newSceneWidth = mimeData.imageData().width()
+        try:
+            newSceneWidth = mimeData.imageData().width()
+        except:
+            return
         newSceneHeight = mimeData.imageData().height()
         self.scene.setSceneRect(0,0, newSceneWidth, newSceneHeight)
         self.scene.addPixmap(QtGui.QPixmap(mimeData.imageData()))
         #self.scene.setScaledContents(False)
+        if self.new_session:
+            self.start_new_session()
+            self.new_session = False
+
         p = QtGui.QPixmap(mimeData.imageData())
-        p.save("filenam.png","PNG")
+        self.save_img(p)
+        self.refresh_prev_screenshots()
+        # p.save("filenam.png","PNG")
+
+    def save_img(self, img):
+        # accepts input of image as a pyqt pixmap
+        img_path = os.path.join(self.save_dir, self.title + "_" + self.episode + "_" + str(self.index) + ".png")
+        img.save(img_path, "PNG")
+        self.screenshot_list.append(self.title + "_" + self.episode + "_" + str(self.index) + ".png")
+        self.index = self.index + 1
 
 
 def window():
@@ -243,5 +228,6 @@ def window():
     win = MyWindow()
     win.show()
     sys.exit(app.exec_())
+
 
 window()
