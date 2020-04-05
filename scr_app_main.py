@@ -122,6 +122,7 @@ class MyWindow(QMainWindow):
     def deleteImg(self):
         self.screenshot_list.pop()
         self.scene.clear()
+        self.index = self.index - 1
         # pixmap = QtGui.QPixmap(os.path.join(self.save_dir, self.screenshot_list[-1]))
         # newSceneWidth = pixmap.width()
         # newSceneHeight = pixmap.height()
