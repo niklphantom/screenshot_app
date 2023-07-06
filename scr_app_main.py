@@ -16,6 +16,8 @@ class MyWindow(QMainWindow):
     screenshot_list = []
     index_list = []
     new_session = True
+    save_width = 1000
+    save_height = 1000
 
     def __init__(self):
         super(MyWindow, self).__init__()
@@ -87,6 +89,22 @@ class MyWindow(QMainWindow):
         self.verticalLayout.addWidget(self.episodeEdit)
         self.episodeEdit.setText(str(self.episode))
 
+        self.save_widthLab = QtWidgets.QLabel(self.verticalLayoutWidget)
+        self.save_widthLab.setObjectName("save_widthLab")
+        self.verticalLayout.addWidget(self.save_widthLab)
+        self.save_widthEdit = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.save_widthEdit.setObjectName("save_widthEdit")
+        self.verticalLayout.addWidget(self.save_widthEdit)
+        self.save_widthEdit.setText(str(self.save_width))
+
+        self.save_heightLab = QtWidgets.QLabel(self.verticalLayoutWidget)
+        self.save_heightLab.setObjectName("save_heightLab")
+        self.verticalLayout.addWidget(self.save_heightLab)
+        self.save_heightEdit = QtWidgets.QLineEdit(self.verticalLayoutWidget)
+        self.save_heightEdit.setObjectName("save_heightEdit")
+        self.verticalLayout.addWidget(self.save_heightEdit)
+        self.save_heightEdit.setText(str(self.save_height))
+
         self.automatic = QtWidgets.QCheckBox(self.verticalLayoutWidget)
         self.automatic.setObjectName("check it if you are stupid C:")
         self.verticalLayout.addWidget(self.automatic)
@@ -103,6 +121,10 @@ class MyWindow(QMainWindow):
             self.titleEdit.setText(str(self.title))
             self.episode = data["episode"]
             self.episodeEdit.setText(str(self.episode))
+            self.save_width = data["save_width"]
+            self.save_widthEdit.setText(str(self.save_width))
+            self.save_height = data["save_height"]
+            self.save_heightEdit.setText(str(self.save_height))
 
         # actions, changes and clicks
         self.saveDirBut.clicked.connect(self.changeSaveDir)
@@ -117,6 +139,8 @@ class MyWindow(QMainWindow):
         self.saveDirLab.setText(_translate("MainWindow", "save"))
         self.titleLab.setText(_translate("MainWindow", "title"))
         self.episodeLab.setText(_translate("MainWindow", "episode"))
+        self.save_widthLab.setText(_translate("MainWindow", "adjust screenshot save width"))
+        self.save_heightLab.setText(_translate("MainWindow", "adjust screenshot save height"))
         self.automatic.setText(_translate("MainWindow", "check it if you are stupid C:"))
 
     def deleteImg(self):
@@ -155,7 +179,7 @@ class MyWindow(QMainWindow):
         if self.index_list:
             self.index = max(self.index_list) + 1
         # save file about current session to load delete time
-        session_data = {"save_dir": self.save_dir, "title": self.title, "episode": self.episode}
+        session_data = {"save_dir": self.save_dir, "title": self.title, "episode": self.episode, "save_width": self.save_width, "save_height": self.save_height}
         with open("last_session_data.json", "w") as write_file:
             json.dump(session_data, write_file)
 
@@ -183,9 +207,14 @@ class MyWindow(QMainWindow):
     def copyImg(self):
         temp_episode = self.episodeEdit.text()
         temp_title = self.titleEdit.text()
-        if self.title != temp_title or self.episode != temp_episode:
+        temp_save_width = int(self.save_widthEdit.text())
+        temp_save_height = int(self.save_heightEdit.text())
+        if self.title != temp_title or self.episode != temp_episode or \
+                self.save_height != temp_save_height or self.save_width != temp_save_width:
             self.title = temp_title
             self.episode = temp_episode
+            self.save_width = temp_save_width
+            self.save_height = temp_save_height
             self.new_session = True
         if self.title == "" and self.episode == "":
             #print("uuuu nelza tak")
@@ -196,14 +225,31 @@ class MyWindow(QMainWindow):
             msg.setWindowTitle("Error")
             msg.exec_()
             return
+        if int(self.save_width) < int(self.save_height):
+            #print("uuuu nelza tak")
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("Not so fast")
+            msg.setInformativeText('width is bigger than height, are you sure?')
+            msg.setWindowTitle("Error")
+            msg.exec_()
+        if int(self.save_width) > 4000 or int(self.save_height) > 4000:
+            #print("uuuu nelza tak")
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("Not so fast")
+            msg.setInformativeText('img side is more than 4000 pixels, are you sure?')
+            msg.setWindowTitle("Error")
+            msg.exec_()
+
         self.scene.clear()
         clip = QApplication.clipboard()
         mimeData = clip.mimeData()
         try:
             newSceneWidth = mimeData.imageData().width()
+            newSceneHeight = mimeData.imageData().height()
         except:
             return
-        newSceneHeight = mimeData.imageData().height()
         self.scene.setSceneRect(0,0, newSceneWidth, newSceneHeight)
         self.scene.addPixmap(QtGui.QPixmap(mimeData.imageData()))
         #self.scene.setScaledContents(False)
@@ -218,6 +264,10 @@ class MyWindow(QMainWindow):
 
     def save_img(self, img):
         # accepts input of image as a pyqt pixmap
+        current_width = img.width()
+        current_height = img.height()
+        if current_width != self.save_width or current_height != self.save_height:
+            img = img.scaled(int(self.save_width), int(self.save_height), transformMode=1)  # apply smooth transform
         img_path = os.path.join(self.save_dir, self.title + "_" + self.episode + "_" + str(self.index) + ".png")
         img.save(img_path, "PNG")
         self.screenshot_list.append(self.title + "_" + self.episode + "_" + str(self.index) + ".png")
