@@ -4,6 +4,7 @@ import sys
 import os
 import json
 from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtCore import Qt
 
 
 
@@ -55,11 +56,11 @@ class MyWindow(QMainWindow):
         self.predictLab.setObjectName("predictLab")
 
         self.deleteImageBut = QtWidgets.QPushButton(self)
-        self.deleteImageBut.setGeometry(QtCore.QRect(1450, 300, 93, 28))
+        self.deleteImageBut.setGeometry(QtCore.QRect(1440, 330, 93, 28))
         self.deleteImageBut.setObjectName("deleteImageBut")
 
         self.verticalLayoutWidget = QtWidgets.QWidget(self)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(1440, 20, 160, 260))
+        self.verticalLayoutWidget.setGeometry(QtCore.QRect(1440, 20, 160, 310))
         self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
 
         self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
@@ -109,6 +110,19 @@ class MyWindow(QMainWindow):
         self.automatic.setObjectName("check it if you are stupid C:")
         self.verticalLayout.addWidget(self.automatic)
 
+        self.file_format_combo = QComboBox()
+        self.file_format_combo.addItems(["png", "jpg"])
+        self.verticalLayout.addWidget(self.file_format_combo)
+
+        self.two_screen_info = QLabel('Settings for usage with 2 monitors', self)
+        self.verticalLayout.addWidget(self.two_screen_info)
+
+        self.combo_box = QComboBox()
+        self.combo_box.addItems(["Save whole screenshot", "Save bottom half of img",
+                                 "Save upper half of img", "Save left half of img",
+                                 "Save right part of img"])
+        self.verticalLayout.addWidget(self.combo_box)
+
         self.retranslateUi()
         QtCore.QMetaObject.connectSlotsByName(self)
 
@@ -125,6 +139,14 @@ class MyWindow(QMainWindow):
             self.save_widthEdit.setText(str(self.save_width))
             self.save_height = data["save_height"]
             self.save_heightEdit.setText(str(self.save_height))
+            index = self.combo_box.findText(data["two_monitors_settings"], Qt.MatchFixedString)
+            if index >= 0:
+                self.combo_box.setCurrentIndex(index)
+            index_f = self.file_format_combo.findText(data["file_format"], Qt.MatchFixedString)
+            if index_f >= 0:
+                self.file_format_combo.setCurrentIndex(index_f)
+
+
 
         # actions, changes and clicks
         self.saveDirBut.clicked.connect(self.changeSaveDir)
@@ -179,7 +201,8 @@ class MyWindow(QMainWindow):
         if self.index_list:
             self.index = max(self.index_list) + 1
         # save file about current session to load delete time
-        session_data = {"save_dir": self.save_dir, "title": self.title, "episode": self.episode, "save_width": self.save_width, "save_height": self.save_height}
+        session_data = {"save_dir": self.save_dir, "title": self.title, "episode": self.episode, "save_width": self.save_width, "save_height": self.save_height,
+                        "two_monitors_settings": self.combo_box.currentText(), "file_format": self.file_format_combo.currentText()}
         with open("last_session_data.json", "w") as write_file:
             json.dump(session_data, write_file)
 
@@ -251,13 +274,32 @@ class MyWindow(QMainWindow):
         except:
             return
         self.scene.setSceneRect(0,0, newSceneWidth, newSceneHeight)
-        self.scene.addPixmap(QtGui.QPixmap(mimeData.imageData()))
+
+        combo_idx = self.combo_box.currentIndex()
+
+        p = QtGui.QPixmap(mimeData.imageData())
+
+        current_width = p.width()
+        current_height = p.height()
+        # Calculate the cropping dimensions based on combo_idx
+        if combo_idx == 1:
+            p = p.copy(0, current_height // 2, current_width, current_height // 2)  # Crop bottom half
+        elif combo_idx == 2:
+            p = p.copy(0, 0, current_width, current_height // 2)  # Crop upper half
+        elif combo_idx == 3:
+            p = p.copy(0, 0, current_width // 2, current_height)  # Crop left half
+        elif combo_idx == 4:
+            p = p.copy(current_width // 2, 0, current_width // 2, current_height)  # Crop right half
+        else:
+            pass
+
+        self.scene.addPixmap(QtGui.QPixmap(p))
         #self.scene.setScaledContents(False)
         if self.new_session:
             self.start_new_session()
             self.new_session = False
 
-        p = QtGui.QPixmap(mimeData.imageData())
+        # p = QtGui.QPixmap(mimeData.imageData())
         self.save_img(p)
         self.refresh_prev_screenshots()
         # p.save("filenam.png","PNG")
@@ -266,11 +308,12 @@ class MyWindow(QMainWindow):
         # accepts input of image as a pyqt pixmap
         current_width = img.width()
         current_height = img.height()
+
         if current_width != self.save_width or current_height != self.save_height:
             img = img.scaled(int(self.save_width), int(self.save_height), transformMode=1)  # apply smooth transform
-        img_path = os.path.join(self.save_dir, self.title + "_" + self.episode + "_" + str(self.index) + ".png")
-        img.save(img_path, "PNG")
-        self.screenshot_list.append(self.title + "_" + self.episode + "_" + str(self.index) + ".png")
+        img_path = os.path.join(self.save_dir, self.title + "_" + self.episode + "_" + str(self.index) + f".{self.file_format_combo.currentText()}")
+        img.save(img_path, f"{self.file_format_combo.currentText()}".upper())
+        self.screenshot_list.append(self.title + "_" + self.episode + "_" + str(self.index) + f".{self.file_format_combo.currentText()}")
         self.index = self.index + 1
 
 
