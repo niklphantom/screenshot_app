@@ -5,7 +5,7 @@ import os
 import json
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtCore import Qt
-
+from PyQt5.QtGui import QGuiApplication
 
 
 class MyWindow(QMainWindow):
@@ -44,11 +44,13 @@ class MyWindow(QMainWindow):
         self.label4 = QLabel('Prev prev', self)
         self.label4.setGeometry(QtCore.QRect(1480, 655, 60, 50))
 
+
         self.imageView = QtWidgets.QGraphicsView(self)
         self.scene = QtWidgets.QGraphicsScene(self)
-        self.scene.setSceneRect(0, 0, 1400, 800)
         self.imageView.setGeometry(QtCore.QRect(0, 60, 1410, 810))
         self.imageView.setScene(self.scene)
+        self.imageView.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.imageView.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.imageView.setObjectName("imageView")
 
         self.predictLab = QtWidgets.QLabel(self)
@@ -120,7 +122,8 @@ class MyWindow(QMainWindow):
         self.combo_box = QComboBox()
         self.combo_box.addItems(["Save whole screenshot", "Save bottom half of img",
                                  "Save upper half of img", "Save left half of img",
-                                 "Save right part of img"])
+                                 "Save right part of img",
+                                 "Capture primary monitor", "Capture second monitor"])
         self.verticalLayout.addWidget(self.combo_box)
 
         self.retranslateUi()
@@ -152,6 +155,22 @@ class MyWindow(QMainWindow):
         self.saveDirBut.clicked.connect(self.changeSaveDir)
         self.automatic.stateChanged.connect(self.changeMode)
         self.deleteImageBut.clicked.connect(self.deleteImg)
+
+        self.instantScreenshotCheckbox = QtWidgets.QCheckBox("Instant screenshot by 'S' button", self.verticalLayoutWidget)
+        self.instantScreenshotCheckbox.setObjectName("instantScreenshotCheckbox")
+        self.verticalLayout.addWidget(self.instantScreenshotCheckbox)
+
+        # Connect the new checkbox signal
+        self.instant_screenshot_enabled = False
+        self.instantScreenshotCheckbox.stateChanged.connect(self.toggleInstantScreenshot)
+
+        self.retranslateUi()
+        QtCore.QMetaObject.connectSlotsByName(self)
+
+    def toggleInstantScreenshot(self, state):
+        """Enable or disable instant screenshot functionality."""
+        self.instant_screenshot_enabled = state == Qt.Checked
+
 
     def retranslateUi(self):
         _translate = QtCore.QCoreApplication.translate
@@ -226,8 +245,14 @@ class MyWindow(QMainWindow):
             self.copyImg()
         if e.key() == QtCore.Qt.Key_Delete:
             self.deleteImg()
+        elif e.key() == QtCore.Qt.Key_S:
+            if self.instant_screenshot_enabled:
+                self.copyImg(paste_mode=False)
+            else:
+                QMessageBox.warning(self, "Instant Screenshot Disabled",
+                                    "Please enable 'Instant screenshot by S button' in the UI to use this feature.")
 
-    def copyImg(self):
+    def copyImg(self, paste_mode=True):
         temp_episode = self.episodeEdit.text()
         temp_title = self.titleEdit.text()
         temp_save_width = int(self.save_widthEdit.text())
@@ -240,7 +265,6 @@ class MyWindow(QMainWindow):
             self.save_height = temp_save_height
             self.new_session = True
         if self.title == "" and self.episode == "":
-            #print("uuuu nelza tak")
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Warning)
             msg.setText("Not so fast")
@@ -249,39 +273,54 @@ class MyWindow(QMainWindow):
             msg.exec_()
             return
         if int(self.save_width) < int(self.save_height):
-            #print("uuuu nelza tak")
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Warning)
             msg.setText("Not so fast")
-            msg.setInformativeText('width is bigger than height, are you sure?')
+            msg.setInformativeText('Width is smaller than height, are you sure?')
             msg.setWindowTitle("Error")
             msg.exec_()
         if int(self.save_width) > 4000 or int(self.save_height) > 4000:
-            #print("uuuu nelza tak")
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Warning)
             msg.setText("Not so fast")
-            msg.setInformativeText('img side is more than 4000 pixels, are you sure?')
+            msg.setInformativeText('Image dimension exceeds 4000 pixels, are you sure?')
             msg.setWindowTitle("Error")
             msg.exec_()
 
         self.scene.clear()
-        clip = QApplication.clipboard()
-        mimeData = clip.mimeData()
-        try:
-            newSceneWidth = mimeData.imageData().width()
-            newSceneHeight = mimeData.imageData().height()
-        except:
-            return
-        self.scene.setSceneRect(0,0, newSceneWidth, newSceneHeight)
 
-        combo_idx = self.combo_box.currentIndex()
+        screen_idx = self.combo_box.currentIndex()
+        if screen_idx == 5:  # Capture primary monitor
+            screen = QGuiApplication.primaryScreen()
+        elif screen_idx == 6:  # Capture second monitor
+            screens = QGuiApplication.screens()
+            if len(screens) > 1:
+                screen = screens[1]  # Secondary monitor
+            else:
+                QMessageBox.warning(self, "Error", "Only one monitor detected.")
+                return
+        else:  # Fallback to whole screenshot
+            screen = QGuiApplication.primaryScreen()
 
-        p = QtGui.QPixmap(mimeData.imageData())
+        # Automatic screenshot capture for instant mode
+        if not paste_mode:
+            if screen is None:
+                return
+            p = screen.grabWindow(0)  # Capture the entire screen or all screens
+        else:
+            # Original behavior for 'V' key: paste from clipboard
+            clip = QApplication.clipboard()
+            mimeData = clip.mimeData()
+            try:
+                p = QtGui.QPixmap(mimeData.imageData())
+            except:
+                return
 
         current_width = p.width()
         current_height = p.height()
-        # Calculate the cropping dimensions based on combo_idx
+        combo_idx = self.combo_box.currentIndex()
+
+        # Crop based on combo_idx
         if combo_idx == 1:
             p = p.copy(0, current_height // 2, current_width, current_height // 2)  # Crop bottom half
         elif combo_idx == 2:
@@ -290,31 +329,32 @@ class MyWindow(QMainWindow):
             p = p.copy(0, 0, current_width // 2, current_height)  # Crop left half
         elif combo_idx == 4:
             p = p.copy(current_width // 2, 0, current_width // 2, current_height)  # Crop right half
-        else:
-            pass
 
-        self.scene.addPixmap(QtGui.QPixmap(p))
-        #self.scene.setScaledContents(False)
+        self.scene.addPixmap(p)
         if self.new_session:
             self.start_new_session()
             self.new_session = False
 
-        # p = QtGui.QPixmap(mimeData.imageData())
         self.save_img(p)
         self.refresh_prev_screenshots()
-        # p.save("filenam.png","PNG")
 
     def save_img(self, img):
-        # accepts input of image as a pyqt pixmap
+        """Saves the image as a file."""
         current_width = img.width()
         current_height = img.height()
 
         if current_width != self.save_width or current_height != self.save_height:
-            img = img.scaled(int(self.save_width), int(self.save_height), transformMode=1)  # apply smooth transform
-        img_path = os.path.join(self.save_dir, self.title + "_" + self.episode + "_" + str(self.index) + f".{self.file_format_combo.currentText()}")
-        img.save(img_path, f"{self.file_format_combo.currentText()}".upper())
-        self.screenshot_list.append(self.title + "_" + self.episode + "_" + str(self.index) + f".{self.file_format_combo.currentText()}")
-        self.index = self.index + 1
+            img = img.scaled(self.save_width, self.save_height, transformMode=Qt.SmoothTransformation)
+
+        img_path = os.path.join(
+            self.save_dir,
+            f"{self.title}_{self.episode}_{self.index}.{self.file_format_combo.currentText()}"
+        )
+        img.save(img_path, self.file_format_combo.currentText().upper())
+        self.screenshot_list.append(
+            f"{self.title}_{self.episode}_{self.index}.{self.file_format_combo.currentText()}"
+        )
+        self.index += 1
 
 
 def window():
